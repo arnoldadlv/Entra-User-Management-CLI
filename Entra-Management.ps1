@@ -3,7 +3,7 @@ function Show-MainMenu {
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
     Write-Host "|    User Management Tool Menu     |" -ForegroundColor Cyan
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
-    Write-Host "| 1. Find a User                   |"
+    Write-Host "| 1. List all users                |"
     Write-Host "| 2. Update a User                 |"
     Write-Host "| 3. Create a New User             |"
     Write-Host "| 4. Offboard a User               |"
@@ -24,6 +24,17 @@ function Get-FindaUserMenuChoice {
     return $choice
 }
 
+#Lists all Users in Entra tenant
+function Show-AllUsers {
+    Write-Host "Getting all Entra ID Users..."
+    $users = Get-MgUser -All
+    foreach ($user in $users) {
+        Write-Host "DisplayName: $($user.DisplayName), Email: $($user.Mail), ID: $($user.id)" -ForegroundColor Green
+    }
+
+}
+
+#Shows "Find User" Menu
 function Show-FindaUserMenu {
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
     Write-Host "|         Find User Menu           |"
@@ -39,11 +50,31 @@ function Show-FindaUserMenu {
 
 }
 
+#Runs the Search by Name option
 function Search-UserByName {
-    $userFirstName = Read-Host "Enter the users first name: "
-    $userFirstName = "'$userFirstName'"
-    $results = Get-MgUser -Filter "startswith(displayName, $userFirstName)"
-    $results
+    $userSearchTerm = Read-Host "Enter the users first name: "
+    $userSearchTerm = "'$userSearchTerm'"
+    $user = Get-MgUser -Filter "startswith(displayName, $userSearchTerm)" 
+    
+    try {
+        $user = Get-MgUser -Filter "startswith(displayName, $userSearchTerm)"
+        
+        if (-not $users ) {
+            $users = Get-Mguser -Filter "endswith(displayName, $userSearchTerm)"
+        }
+
+        if (-not $users) {
+            Write-Host "No users were found" -ForegroundColor Red
+        }
+    }
+    catch {
+        <#Do this if a terminating exception happens#>
+        Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    }
+
+    foreach ($user in $users) {
+        Write-Host "DisplayName: $($user.DisplayName), Email: $($user.Mail), ID: $($user.id)" -ForegroundColor Green 
+    }
     Write-Host "DEBUG: Executing Search-UserByName"
 
 }
@@ -55,17 +86,8 @@ do {
 
     switch ($mainChoice) {
         1 {
-            Write-Host "Option 1: Find a User" -ForegroundColor Yellow
-            Show-FindaUserMenu
-            $subChoice = Get-MenuChoice
-            switch ($subChoice) {
-                1 {
-                    Write-Host "Option 1: Search by Name" -ForegroundColor Yellow
-                    Search-UserByName
-                    break
-                }
-            }
-            break
+            Write-Host "Option 1: List all Users" -ForegroundColor Yellow
+            Show-AllUsers
 
         }
         2 {

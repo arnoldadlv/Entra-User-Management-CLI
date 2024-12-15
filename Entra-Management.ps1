@@ -143,7 +143,7 @@ function Show-FindaUserMenu {
 
 function Show-UpdateAUserMenu {
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
-    Write-Host "|         Update a User            |"
+    Write-Host "|         Update a User            |" -ForegroundColor Green
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
     Write-Host "| 1. Update Name                   |"
     Write-host "| 2. Update Email                  |"
@@ -151,7 +151,6 @@ function Show-UpdateAUserMenu {
     Write-host "| 4.                               |"
     Write-host "| 5. Return to Main Menu           |"
     Write-host "+----------------------------------+" -ForegroundColor Cyan
-    Write-Host "DEBUG: Entering Update a User Menu"
 }
 
 function Invoke-UpdateAUserSubMenu {
@@ -198,8 +197,6 @@ function Update-UsersFirstName {
 #Offboard User
 function Revoke-User {
     $userSearch = Read-Host "What user do you wish to offboard? Enter a portion of their name or email"
-    
-
     try {
         $potentialUsers = Get-MgUser -Filter "startswith(displayName, '$userSearch')"
         if (-not $potentialUsers) {
@@ -289,6 +286,56 @@ function Search-UserByName {
 
 }
 
+
+#Create a new user
+function Invoke-CreateANewUser {
+    $userDisplayName = Read-Host "What is the users name? (First and Last Name)"
+    $names = $userDisplayName -split ' '
+    $firstName = $names[0]
+    $lastName = ($names | Select-Object -Skip 1) -join ' '
+    
+    $orgDomain = 'arnolddelavega.com'
+    
+    #Edit this depending on org standards
+    $userPrincipalName = ("$firstName.$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
+    $checkExistingUser = Get-MgUser -Filter "userPrincipalName eq '$userPrincipalName'"
+    if ($checkExistingUser) {
+        Write-Host "A user with the UserPrincipalName $($userPrincipalName) already exists." -ForegroundColor Red
+        return
+    }
+    $email = $userPrincipalName
+    $mailNickName = $userPrincipalName.Split('@')[0]
+    $newUsersPassword = Read-Host "Enter the new users password"
+    
+    
+    $passwordProfile = @{
+        Password                      = $newUsersPassword
+        ForceChangePasswordNextSignIn = $true
+    }
+    
+    
+    Write-Host "The users first name is: $($firstName)"
+    Write-Host "The users last name is: $($lastName)"
+    Write-Host "THe users UserPrinicpalName is: $($userPrincipalName)"
+    Write-Host "The users email is: $($email)"
+    Write-Host "The users mailnickname is: $($mailNickName)"
+    Write-Host "Creating user..." -ForegroundColor Yellow
+    try {
+        New-MgUser -DisplayName $userDisplayName -GivenName $firstName -Surname $lastName -UserPrincipalName $userPrincipalName -PasswordProfile $passwordProfile -Mail $email -AccountEnabled:$true -MailNickname $mailNickName > $null
+        Write-Host "New user has been created..." -ForegroundColor Green
+        $users = Get-MgUser -UserId $userPrincipalName
+        foreach ($user in $users) {
+            Write-Host "DisplayName: $($user.DisplayName), UserId: $($user.Id), Mail: $($user.Mail), UserPrincipalName: $($userPrincipalName)" -ForegroundColor Cyan
+        }
+    
+    }
+    catch {
+        <#Do this if a terminating exception happens#>
+        Write-Host "An error occured while creating the user: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }   
+}
+
 #Runs the main menu
 do {
     Show-MainMenu
@@ -306,6 +353,7 @@ do {
         }
         3 {
             Write-Host "Option 3: Create a New User" -ForegroundColor Yellow
+            Invoke-CreateANewUser
         }
         4 {
             Write-Host "Option 4: Offboard a User" -ForegroundColor Yellow

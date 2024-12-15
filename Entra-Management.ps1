@@ -147,14 +147,42 @@ function Show-UpdateAUserMenu {
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
     Write-Host "| 1. Update Name                   |"
     Write-host "| 2. Update Email                  |"
-    Write-host "| 3.                               |"
+    Write-host "| 3. Offboard User                 |"
     Write-host "| 4.                               |"
     Write-host "| 5. Return to Main Menu           |"
     Write-host "+----------------------------------+" -ForegroundColor Cyan
     Write-Host "DEBUG: Entering Update a User Menu"
-
-
 }
+
+function Invoke-UpdateAUserSubMenu {
+    do {
+        Show-UpdateAUserMenu
+        $submenuChoice = Read-Host "Enter your choice: (1-5)"
+
+        switch ($submenuChoice) {
+            1 {
+                Write-Host "Option 1: Update Name"
+            }
+            2 {
+                Write-Host "Option 2: Update user's email"
+            }
+            3 {
+                Write-Host "Option 3: Offboard a user"
+                Revoke-User
+            }
+            4 {
+                Write-Host "Option 4"
+            }
+            5 {
+                Write-Host "Return to Main Menu"
+            }
+            default {
+                Write-Host "That is not a valid option. Please try again" -ForegroundColor Red
+            }
+        }
+    } while ($submenuChoice -ne 5)
+}
+
 
 function Update-UsersFirstName {
     $usersPrincipalName = Read-Host "What user do you want to update? Enter their User Principal Name: "
@@ -165,6 +193,71 @@ function Update-UsersFirstName {
 
     Get-MgUser $usersPrincipalName 
 
+}
+
+#Offboard User
+function Revoke-User {
+    $userSearch = Read-Host "What user do you wish to offboard? Enter a portion of their name or email"
+    
+
+    try {
+        $potentialUsers = Get-MgUser -Filter "startswith(displayName, '$userSearch')"
+        if (-not $potentialUsers) {
+            $potentialUsers = Get-MgUser -Filter "endswith(displayName, '$userSearch')"
+        }
+        if (-not $potentialUsers) {
+            $potentialUsers = Get-MgUser -Filter "startswith(userPrincipalName, '$userSearch')"
+        } 
+        if (-not $potentialUsers) {
+            $potentialUsers = Get-MgUser -Filter "endswith(userPrincipalName, '$userSearch')"
+        } 
+        if (-not $potentialUsers) {
+            Write-Host "No users found matching '$userSearch'. Please try again." -ForegroundColor Red
+            Pause
+            continue
+        }
+        #Matching users that were found
+        Write-Host "Matching users: " -ForegroundColor Green
+        $index = 1
+        $users = @($potentialUsers)
+        foreach ($user in $users) {
+            Write-Host "$index. DisplayName: $($user.DisplayName), Email: $($user.Mail), ID: $($user.id)" -ForegroundColor Green
+            $index++
+        }
+
+        #Ensures a valid object in the $users array is selected
+        $userSelection = -1
+        do {
+            $userSelection = [int](Read-Host "Enter the number corresponding to the user you wish to offboard" ) - 1
+            if ($userSelection -lt 0 -or $userSelection -ge $users.Count) {
+                Write-Host "Invalid selection. Try again." -ForegroundColor Red
+                $userSelection = -1
+            }
+        } while ($userSelection -lt 0 -or $userSelection -ge $users.Count) 
+
+        #$userSelection = [int](Read-Host "Enter the number corresponding to the user you wish to offboard" ) - 1
+        
+        #Confirms if user truly needs to be offboarded
+        $confirmation = Read-Host "Are you sure you want to offboard $($users[$userSelection].Id)? (Y/N)"
+        if ($confirmation.ToLower() -eq 'y') {
+            Write-Host "You are now offboarding $($users[$userSelection].Id)" -ForegroundColor Yellow
+            Update-MgUser -UserId $users[$userSelection].Id -AccountEnabled:$false
+            Revoke-MgUserSignInSession -UserId $users[$userSelection].Id > $null
+        }
+        elseif ($confirmation.ToLower() -eq 'n') {
+            Write-Host "You are now returning to the menu" -ForegroundColor Yellow
+            return
+        }
+        #Disables user account
+        #Write-Host "Offboarding user..." -ForegroundColor Yellow
+        #Write-Host "You are offboarding $($users[$userSelection].Id)" -ForegroundColor Cyan
+        #Update-MgUser -UserId $users[$userSelection.Id] -ForegroundColor Cyan
+    }
+    catch {
+        Write-Host "Could not find any user..." -ForegroundColor Red
+        Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    }
+    Pause
 }
 
 #Runs the Search by Name option
@@ -209,13 +302,14 @@ do {
         }
         2 {
             Write-Host "Option 2: Update a User" -ForegroundColor Yellow
-            Show-UpdateAUserMenu
+            Invoke-UpdateAUserSubMenu
         }
         3 {
             Write-Host "Option 3: Create a New User" -ForegroundColor Yellow
         }
         4 {
             Write-Host "Option 4: Offboard a User" -ForegroundColor Yellow
+            
         }
         5 {
             Write-Host "Option 5: Manage User Licenses" -ForegroundColor Yellow

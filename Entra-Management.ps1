@@ -98,7 +98,7 @@ function Show-MainMenu {
     Write-Host "| 2. Update a User                 |"
     Write-Host "| 3. Create a New User             |"
     Write-Host "| 4. Create a group                |"
-    Write-Host "| 5. Manage User Licenses          |"
+    Write-Host "| 5. List all groups               |"
     Write-Host "| 6. Exit                          |"
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
 }
@@ -479,6 +479,17 @@ function New-Group {
     }
 }
 
+#Show all groups
+function Show-AllGroups {
+    $groups = Get-MgGroup
+    
+    foreach ($group in $groups) {
+        $groupMembers = (Get-MgGroupMember -GroupId $group.Id).Count
+        Write-Host "Group Name: $($group.DisplayName), Group ID: $($group.Id), Group Description: $($group.Description), Group Member Count:$($groupMembers)" -ForegroundColor Green
+    }
+
+}
+
 #Runs the main menu
 do {
     Show-MainMenu
@@ -503,7 +514,8 @@ do {
             New-Group
         }
         5 {
-            Write-Host "Option 5: Manage User Licenses" -ForegroundColor Yellow
+            Write-Host "Option 5: List all Groups" -ForegroundColor Yellow
+            Show-AllGroups
         }
         6 {
             Write-Host "Option 6: Exit" -ForegroundColor Yellow

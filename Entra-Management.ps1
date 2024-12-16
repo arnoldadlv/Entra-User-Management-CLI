@@ -421,14 +421,45 @@ function Invoke-CreateANewUser {
         Write-Host "A user with the UserPrincipalName $($userPrincipalName) already exists." -ForegroundColor Red
         return
     }
-    $email = $userPrincipalName
-    $mailNickName = $userPrincipalName.Split('@')[0]
+
     $newUsersPassword = Read-Host "Enter the new users password"
 
     $passwordProfile = @{
         Password                      = $newUsersPassword
         ForceChangePasswordNextSignIn = $true
     }
+
+    $mailNickName = $userPrincipalName.Split('@')[0]
+    $email = $userPrincipalName
+    $userJobTitle = Read-Host "What is the new user's job title? (Leave blank if none)"
+    $userDepartment = Read-Host "What department is the user in? (Leave blank if None)"
+
+    $userProperties = @{
+        DisplayName      = $userDisplayName
+        GivenName        = $firstName
+        Surname          = $lastName
+        UserPrincipalName = $userPrincipalName
+        PasswordProfile  = $passwordProfile
+        Mail             = $email
+        AccountEnabled   = $true
+        MailNickname     = $mailNickName
+    }
+
+    if($userDepartment) {
+        $userProperties["Department"] = $userDepartment
+    }
+
+    if($userJobTitle) {
+        $userProperties["JobTitle"] = $userJobTitle
+    }
+
+    
+    
+    
+
+  
+
+    
 
     Write-Host "The users first name is: $($firstName)"
     Write-Host "The users last name is: $($lastName)"
@@ -437,7 +468,7 @@ function Invoke-CreateANewUser {
     Write-Host "The users mailnickname is: $($mailNickName)"
     Write-Host "Creating user..." -ForegroundColor Yellow
     try {
-        New-MgUser -DisplayName $userDisplayName -GivenName $firstName -Surname $lastName -UserPrincipalName $userPrincipalName -PasswordProfile $passwordProfile -Mail $email -AccountEnabled:$true -MailNickname $mailNickName > $null
+        New-MgUser @userProperties > $null
         Write-Host "New user has been created..." -ForegroundColor Green
         $users = Get-MgUser -UserId $userPrincipalName
         foreach ($user in $users) {

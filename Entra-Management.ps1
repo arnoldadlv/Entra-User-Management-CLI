@@ -148,7 +148,7 @@ function Show-UpdateAUserMenu {
     Write-Host "| 1. Update Name                   |"
     Write-host "| 2. Update Email                  |"
     Write-host "| 3. Offboard User                 |"
-    Write-host "| 4.                               |"
+    Write-host "| 4. Add User to group             |"
     Write-host "| 5. Return to Main Menu           |"
     Write-host "+----------------------------------+" -ForegroundColor Cyan
 }
@@ -170,7 +170,8 @@ function Invoke-UpdateAUserSubMenu {
                 Revoke-User
             }
             4 {
-                Write-Host "Option 4"
+                Write-Host "Option 4: Add user to a groupSearch"
+                Add-UserTogroup
             }
             5 {
                 Write-Host "Return to Main Menu"
@@ -257,6 +258,82 @@ function Revoke-User {
     Pause
 }
 
+function Add-UserToGroup {
+    $userSearch = Read-Host "What user do you wish to add to a group? Enter a portion of their name or email"
+    try {
+        # Fetch potential users
+        $potentialUsers = Get-MgUser -Filter "startswith(displayName, '$userSearch')"
+        if (-not $potentialUsers) {
+            $potentialUsers = Get-MgUser -Filter "startswith(UserPrincipalName, '$userSearch')"
+        }
+        if (-not $potentialUsers) {
+            Write-Host "No users found matching '$userSearch'. Please try again." -ForegroundColor Red
+            return
+        }
+
+        # Display matching users
+        Write-Host "Matching users: " -ForegroundColor Green
+        $users = @($potentialUsers)
+        for ($i = 0; $i -lt $users.Count; $i++) {
+            Write-Host "$($i + 1). DisplayName: $($users[$i].DisplayName), Email: $($users[$i].Mail), ID: $($users[$i].Id)" -ForegroundColor Green
+        }
+
+        # Ensure a valid user selection
+        $userSelection = -1
+        do {
+            $userSelection = [int](Read-Host "Enter the number corresponding to the user you wish to add to a group") - 1
+            if ($userSelection -lt 0 -or $userSelection -ge $users.Count) {
+                Write-Host "Invalid selection. Try again." -ForegroundColor Red
+                $userSelection = -1
+            }
+        } while ($userSelection -lt 0 -or $userSelection -ge $users.Count)
+
+        $selectedUser = $users[$userSelection]
+
+        # Search for the group
+        $groupSearch = Read-Host "What group are you looking for?"
+        $potentialGroups = Get-MgGroup -Filter "startswith(displayName, '$groupSearch')"
+        if (-not $potentialGroups) {
+            Write-Host "No groups found matching '$groupSearch'. Please try again." -ForegroundColor Red
+            return
+        }
+
+        # Display matching groups
+        Write-Host "Matching groups: " -ForegroundColor Green
+        $groups = @($potentialGroups)
+        for ($i = 0; $i -lt $groups.Count; $i++) {
+            Write-Host "$($i + 1). DisplayName: $($groups[$i].DisplayName), ID: $($groups[$i].Id)" -ForegroundColor Green
+        }
+
+        # Ensure a valid group selection
+        $groupSelection = -1
+        do {
+            $groupSelection = [int](Read-Host "Enter the number corresponding to the group you wish to select") - 1
+            if ($groupSelection -lt 0 -or $groupSelection -ge $groups.Count) {
+                Write-Host "Invalid selection. Try again." -ForegroundColor Red
+                $groupSelection = -1
+            }
+        } while ($groupSelection -lt 0 -or $groupSelection -ge $groups.Count)
+
+        $selectedGroup = $groups[$groupSelection]
+
+        # Add user to the group
+        Write-Host "Adding $($selectedUser.DisplayName) to $($selectedGroup.DisplayName)..." -ForegroundColor Yellow
+        New-MgGroupMember -GroupId $selectedGroup.Id -DirectoryObjectId $selectedUser.Id > $null
+
+        # Display updated group members
+        $groupMembers = Get-MgGroupMember -GroupId $selectedGroup.Id
+        Write-Host "Here are the updated members in $($selectedGroup.DisplayName):" -ForegroundColor Yellow
+        foreach ($member in $groupMembers) {
+            $memberDetails = Get-MgUser -UserId $member.Id
+            Write-Host $memberDetails.UserPrincipalName -ForegroundColor Cyan
+        }
+    }
+    catch {
+        Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
 #Runs the Search by Name option
 function Search-UserByName {
     $userSearchTerm = Read-Host "Enter the users first name: "
@@ -293,9 +370,21 @@ function Invoke-CreateANewUser {
     $names = $userDisplayName -split ' '
     $firstName = $names[0]
     $lastName = ($names | Select-Object -Skip 1) -join ' '
-    
-    $orgDomain = 'arnolddelavega.com'
-    
+
+    # Prompt the user to enter the domain and validate it exists in their tenant
+    do {
+        $verifiedDomains = (Get-MgDomain).Id
+        $orgDomain = Read-Host "What is your organization's domain name? (Available domains: $($verifiedDomains -join ', '))"
+        if ($orgDomain -notin $verifiedDomains) {
+            Write-Host "The domain '$orgDomain' is not a verified domain in your organization. Please enter a valid domain." -ForegroundColor Red
+        }
+    } while ($orgDomain -notin $verifiedDomains)
+
+
+    if (-not $verifiedDomains) {
+        Write-Host "This domain isn't apart of your tenant. Exiting..." -ForegroundColor Red
+        return
+    }
     #Edit this depending on org standards
     $userPrincipalName = ("$firstName.$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
     $checkExistingUser = Get-MgUser -Filter "userPrincipalName eq '$userPrincipalName'"
@@ -306,14 +395,12 @@ function Invoke-CreateANewUser {
     $email = $userPrincipalName
     $mailNickName = $userPrincipalName.Split('@')[0]
     $newUsersPassword = Read-Host "Enter the new users password"
-    
-    
+
     $passwordProfile = @{
         Password                      = $newUsersPassword
         ForceChangePasswordNextSignIn = $true
     }
-    
-    
+
     Write-Host "The users first name is: $($firstName)"
     Write-Host "The users last name is: $($lastName)"
     Write-Host "THe users UserPrinicpalName is: $($userPrincipalName)"
@@ -327,13 +414,12 @@ function Invoke-CreateANewUser {
         foreach ($user in $users) {
             Write-Host "DisplayName: $($user.DisplayName), UserId: $($user.Id), Mail: $($user.Mail), UserPrincipalName: $($userPrincipalName)" -ForegroundColor Cyan
         }
-    
+
     }
     catch {
-        <#Do this if a terminating exception happens#>
         Write-Host "An error occured while creating the user: $($_.Exception.Message)" -ForegroundColor Red
         return
-    }   
+    }
 }
 
 #Runs the main menu
@@ -367,7 +453,7 @@ do {
         }
     }
     if ($mainChoice -ne 6) {
-        Pause
+        Read-Host "Press any key to continue"
     }
 }
 while ($mainChoice -ne 6)

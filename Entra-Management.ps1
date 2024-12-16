@@ -417,10 +417,12 @@ function Invoke-CreateANewUser {
         return
     }
 
+    #Takes new user password as Secure String
     $newUsersPasswordSecureString = Read-Host "Enter the new users password" -AsSecureString
     $encryptedNewUsersPasswordSecureString = ConvertFrom-SecureString -SecureString $newUsersPasswordSecureString
     $marshal = [System.Runtime.InteropServices.Marshal]
     $bstr = $marshal::SecureStringToBSTR($newUsersPasswordSecureString)
+    #Decrypts secure string into plaintext
     $newUsersPasswordPlainText = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
 
     $passwordProfile = @{

@@ -388,9 +388,9 @@ function Invoke-CreateANewUser {
 
 
     #Determine naming convention for org
-    Write-Host "Select the naming convention for userPrincipalName:"
-    Write-Host "1. FirstName.LastName (e.g., john.doe@example.com)"
-    Write-Host "2. FirstInitialLastName (e.g., jdoe@example.com)"
+    Write-Host "Select the naming convention for userPrincipalName:" -ForegroundColor Yellow
+    Write-Host "1. FirstName.LastName (e.g., john.doe@example.com)" -ForegroundColor Yellow
+    Write-Host "2. FirstInitialLastName (e.g., jdoe@example.com)" -ForegroundColor Yellow
 
     $namingConventinon = Read-Host "Enter your choice (1-2)"
 
@@ -412,7 +412,7 @@ function Invoke-CreateANewUser {
 
         }
     }
-    Write-Host "Generated UPN of $($userPrincipalName)"
+    Write-Host "Generated UPN of $($userPrincipalName)" -ForegroundColor Cyan
     #Edit this depending on org standards
     $userPrincipalName = ("$($firstName.Substring(0, 1))$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
 

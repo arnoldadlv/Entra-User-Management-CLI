@@ -385,8 +385,37 @@ function Invoke-CreateANewUser {
         Write-Host "This domain isn't apart of your tenant. Exiting..." -ForegroundColor Red
         return
     }
+
+
+    #Determine naming convention for org
+    Write-Host "Select the naming convention for userPrincipalName:"
+    Write-Host "1. FirstName.LastName (e.g., john.doe@example.com)"
+    Write-Host "2. FirstInitialLastName (e.g., jdoe@example.com)"
+
+    $namingConventinon = Read-Host "Enter your choice (1-2)"
+
+    switch ($namingConventinon) {
+        1 {
+            #FirstName.LastName
+            $userPrincipalName = ("$firstName.$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
+            Write-Host "Using naming convention FirstName.LastName" -ForegroundColor Cyan
+
+        }
+        2 {
+            #First InitialLastName
+            $userPrincipalName = ("$($firstName.Substring(0, 1))$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
+            Write-Host "Using naming convention FirstInitialLastName" -ForegroundColor Cyan
+        }
+        default {
+            Write-Host "Defaulting to First Initial LastName..." -ForegroundColor Yellow
+            $userPrincipalName = ("$($firstName.Substring(0, 1))$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
+
+        }
+    }
+    Write-Host "Generated UPN of $($userPrincipalName)"
     #Edit this depending on org standards
-    $userPrincipalName = ("$firstName.$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
+    $userPrincipalName = ("$($firstName.Substring(0, 1))$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
+
     $checkExistingUser = Get-MgUser -Filter "userPrincipalName eq '$userPrincipalName'"
     if ($checkExistingUser) {
         Write-Host "A user with the UserPrincipalName $($userPrincipalName) already exists." -ForegroundColor Red

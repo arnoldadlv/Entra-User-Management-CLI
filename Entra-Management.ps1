@@ -97,7 +97,7 @@ function Show-MainMenu {
     Write-Host "| 1. List all users                |"
     Write-Host "| 2. Update a User                 |"
     Write-Host "| 3. Create a New User             |"
-    Write-Host "| 4. Offboard a User               |"
+    Write-Host "| 4. Create a group                |"
     Write-Host "| 5. Manage User Licenses          |"
     Write-Host "| 6. Exit                          |"
     Write-Host "+----------------------------------+" -ForegroundColor Cyan
@@ -422,6 +422,34 @@ function Invoke-CreateANewUser {
     }
 }
 
+function New-Group {
+    $groupName = Read-Host "What is the name of the group you wish to create? (DisplayName)"
+    $displayName = $groupName
+    $mailNickName = ($groupName -replace ' ', '').ToLower()
+
+    do {
+        $confirmation = Read-Host "You are going to create a security group with DisplayName: '$displayName'. Do you want to continue? (Y/N)"
+        if ($confirmation.ToLower() -notin @('y', 'n')) {
+            Write-Host "Invalid input. Please enter Y or N." -ForegroundColor Red
+        }
+    } while ($confirmation.ToLower() -notin @('y', 'n'))
+
+    if ($confirmation.ToLower() -eq 'y') {
+        try {
+            Write-Host "Creating group..." -ForegroundColor Yellow
+            $newGroup = New-MgGroup -DisplayName $displayName -SecurityEnabled -MailEnabled:$false -MailNickname $mailNickName
+            $validateGroup = Get-MgGroup -GroupId $newGroup.Id
+            Write-Host "You have successfully created the group: $($validateGroup.DisplayName)" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    else {
+        Write-Host "Operation cancelled by user." -ForegroundColor Yellow
+    }
+}
+
 #Runs the main menu
 do {
     Show-MainMenu
@@ -442,8 +470,8 @@ do {
             Invoke-CreateANewUser
         }
         4 {
-            Write-Host "Option 4: Offboard a User" -ForegroundColor Yellow
-            
+            Write-Host "Option 4: Create a Security Group" -ForegroundColor Yellow
+            New-Group
         }
         5 {
             Write-Host "Option 5: Manage User Licenses" -ForegroundColor Yellow

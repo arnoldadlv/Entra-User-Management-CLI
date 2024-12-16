@@ -406,15 +406,10 @@ function Invoke-CreateANewUser {
             $userPrincipalName = ("$($firstName.Substring(0, 1))$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
             Write-Host "Using naming convention FirstInitialLastName" -ForegroundColor Cyan
         }
-        default {
-            Write-Host "Defaulting to First Initial LastName..." -ForegroundColor Yellow
-            $userPrincipalName = ("$($firstName.Substring(0, 1))$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
-
-        }
+       
     }
     Write-Host "Generated UPN of $($userPrincipalName)" -ForegroundColor Cyan
     #Edit this depending on org standards
-    $userPrincipalName = ("$($firstName.Substring(0, 1))$lastName" -replace ' ', '').ToLower() + "@$orgDomain"
 
     $checkExistingUser = Get-MgUser -Filter "userPrincipalName eq '$userPrincipalName'"
     if ($checkExistingUser) {
@@ -422,10 +417,14 @@ function Invoke-CreateANewUser {
         return
     }
 
-    $newUsersPassword = Read-Host "Enter the new users password"
+    $newUsersPasswordSecureString = Read-Host "Enter the new users password" -AsSecureString
+    $encryptedNewUsersPasswordSecureString = ConvertFrom-SecureString -SecureString $newUsersPasswordSecureString
+    $marshal = [System.Runtime.InteropServices.Marshal]
+    $bstr = $marshal::SecureStringToBSTR($newUsersPasswordSecureString)
+    $newUsersPasswordPlainText = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
 
     $passwordProfile = @{
-        Password                      = $newUsersPassword
+        Password                      = $newUsersPasswordPlainText
         ForceChangePasswordNextSignIn = $true
     }
 
@@ -452,14 +451,6 @@ function Invoke-CreateANewUser {
     if($userJobTitle) {
         $userProperties["JobTitle"] = $userJobTitle
     }
-
-    
-    
-    
-
-  
-
-    
 
     Write-Host "The users first name is: $($firstName)"
     Write-Host "The users last name is: $($lastName)"
